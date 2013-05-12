@@ -249,7 +249,7 @@ class GoAgentAppIndicator:
         if self.childexited:
             self.terminal.disconnect(self.childexited)
         os.system('kill -9 %s' % self.childpid)
-        self.on_show(widget, data)
+        #self.on_show(widget, data)
         self.childpid = self.terminal.fork_command(self.command[0], self.command, os.getcwd())
         self.childexited = self.terminal.connect('child-exited', lambda term: gtk.main_quit())
 
