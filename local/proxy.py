@@ -1112,6 +1112,8 @@ class Common(object):
 
         self.AUTORANGE_HOSTS = tuple(self.CONFIG.get('autorange', 'hosts').split('|'))
         self.AUTORANGE_HOSTS_TAIL = tuple(x.rpartition('*')[2] for x in self.AUTORANGE_HOSTS)
+        self.AUTORANGE_RULES = re.compile(self.CONFIG.get('autorange', 'autorange_rules'))
+        self.AUTORANGE_SKIP = re.compile(self.CONFIG.get('autorange', 'autorange_skip'))
         self.AUTORANGE_MAXSIZE = self.CONFIG.getint('autorange', 'maxsize')
         self.AUTORANGE_WAITSIZE = self.CONFIG.getint('autorange', 'waitsize')
         self.AUTORANGE_BUFSIZE = self.CONFIG.getint('autorange', 'bufsize')
@@ -1640,26 +1642,25 @@ class GAEProxyHandler(object):
     def handle_method_urlfetch(self):
         """GAE http urlfetch"""
         host = self.headers.get('Host', '')
-        rangerules = re.compile('^http(?:s)?:\/\/[^\/]+\/[^?]+\.(?:f4v|flv|hlv|m4v|mp4|mp3|ogg|avi|exe|zip)')
-        donotrange = re.compile('^http(?:s)?:\/\/[^\/]+\/[^?]+\.(?:xml|json|html|js|css|jpg|jpeg|png|gif|ico)')
         if 'Range' in self.headers:
             m = re.search('bytes=(\d+)-', self.headers['Range'])
             start = int(m.group(1) if m else 0)
             self.headers['Range'] = 'bytes=%d-%d' % (start, start+common.AUTORANGE_MAXSIZE-1)
             logging.info('autorange range=%r match url=%r', self.headers['Range'], self.path)
         ####### me
-        elif rangerules.match(self.path):
+        elif common.AUTORANGE_RULES.match(self.path):
             try:
                 m = re.search('bytes=(\d+)-', self.headers.get('Range', ''))
                 start = int(m.group(1) if m else 0)
                 self.headers['Range'] = 'bytes=%d-%d' % (start, start+common.AUTORANGE_MAXSIZE-1)
+                logging.info('Found autorange_rules match url=%r', self.path)
             except StopIteration:
                 pass
         # me end
-        elif host.endswith(common.AUTORANGE_HOSTS_TAIL) and not donotrange.match(self.path):
+        elif host.endswith(common.AUTORANGE_HOSTS_TAIL) and not common.AUTORANGE_SKIP.match(self.path):
             try:
                 pattern = (p for p in common.AUTORANGE_HOSTS if host.endswith(p) or fnmatch.fnmatch(host, p)).next()
-                logging.debug('autorange pattern=%r match url=%r', pattern, self.path)
+                logging.debug('Found autorange pattern=%r match url=%r', pattern, self.path)
                 m = re.search('bytes=(\d+)-', self.headers.get('Range', ''))
                 start = int(m.group(1) if m else 0)
                 self.headers['Range'] = 'bytes=%d-%d' % (start, start+common.AUTORANGE_MAXSIZE-1)
