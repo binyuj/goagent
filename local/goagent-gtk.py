@@ -172,6 +172,8 @@ class GoAgentAppIndicator:
             with open(logo_filename, 'wb') as fp:
                 fp.write(base64.b64decode(GOAGENT_LOGO_DATA))
         self.ind.set_icon(logo_filename)
+        
+        self.window.set_icon_from_file(logo_filename)
 
         self.menu = gtk.Menu()
 
